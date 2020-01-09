@@ -1,0 +1,33 @@
+{
+    "folders": [
+        {
+            "path": "/home/cart/gomod/call_forwarding"
+        }
+    ],
+    "settings": {
+        "editor.fontLigatures": true,
+        "editor.fontFamily": "Fira Code",
+        "editor.fontSize": 14,
+        "diffEditor.ignoreTrimWhitespace": false,
+        "workbench.iconTheme": "vscode-icons",
+        "files.autoSave": "afterDelay",
+        "sync.gist": "aeb8ae32c07f44b80045b3dada3c4563",
+        "window.titleBarStyle": "custom",
+        "cSpell.userWords": [
+            "Incomming",
+            "komiac",
+            "models"
+        ],
+        "editor.renderControlCharacters": true,
+        "window.menuBarVisibility": "default",
+        "workbench.sideBar.location": "left",
+        "git.autofetch": true,
+        "window.zoomLevel": 0,
+        "go.useLanguageServer": true,
+        "explorer.confirmDragAndDrop": false,
+        "go.testEnvFile": "/home/cart/gomod/call_forwarding/.env",        
+        "powermode.presets": "flames",
+        "powermode.explosionDuration": 200,
+        "editor.minimap.enabled": false
+    }
+}
