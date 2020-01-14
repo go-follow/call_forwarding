@@ -67,17 +67,24 @@ func (f *Forward) forward(connListner net.Conn) error {
 	go func() {
 		defer connForward.Close()
 		_, err = io.Copy(connForward, connListner)
-		if err != nil {
+		if err != nil && isLog(err.Error()) {
 			logger.Error(err)
 		}
 	}()
 	go func() {
 		defer connForward.Close()
 		_, err = io.Copy(connListner, connForward)
-		if err != nil {
+		if err != nil && isLog(err.Error()) {
 			logger.Error(err)
 		}
 	}()
 
 	return nil
+}
+
+func isLog(textError string) bool {
+	if strings.Contains(textError, "use of closed network connection") {
+		return false
+	}
+	return true
 }
