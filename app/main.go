@@ -2,15 +2,33 @@ package main
 
 import (
 	"flag"
+	"io/ioutil"
 
 	"github.com/go-follow/call_forwarding/app/config"
 	"github.com/go-follow/call_forwarding/app/forward"
+	"github.com/go-follow/call_forwarding/app/inif"
 	"github.com/go-follow/call_forwarding/logger"
 )
+
+type Settings struct {
+	ListnerIP   string
+	ListnerPort int
+	ForwardIP   string
+	ForwardPort int
+}
 
 func main() {
 	path := getPath()
 	c := make(chan int)
+	data, err := ioutil.ReadFile("../conf.conf")
+	if err != nil {
+		logger.Fatal(err)
+	}
+	s := []Settings{}
+	//json.Unmarshal()
+	if err := inif.Unmarshal(data, &s); err != nil {
+		logger.Fatal(err)
+	}
 	sList, err := config.ReadConfig(path)
 	if err != nil {
 		logger.Fatal("не удалось прочитать конфигурационный файл: ", err)
