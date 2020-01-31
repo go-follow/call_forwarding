@@ -6,6 +6,11 @@ import (
 	"os"
 )
 
+const (
+	ERROR string = "\x1b[31;1mERROR: \x1b[0m"
+	FATAL string = "\x1b[31;1mFATAL: \x1b[0m"
+)
+
 //Info - вывод лога уровня INFO
 func Info(v ...interface{}) {
 	l := log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)

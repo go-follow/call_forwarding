@@ -19,8 +19,8 @@ type Settings struct {
 
 func main() {
 	path := getPath()
-	c := make(chan int)
-	data, err := ioutil.ReadFile("../conf.conf")
+	c := make(chan int)	
+	data, err := ioutil.ReadFile("config.conf")
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -29,6 +29,7 @@ func main() {
 	if err := inif.Unmarshal(data, &s); err != nil {
 		logger.Fatal(err)
 	}
+		
 	sList, err := config.ReadConfig(path)
 	if err != nil {
 		logger.Fatal("не удалось прочитать конфигурационный файл: ", err)
