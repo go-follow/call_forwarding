@@ -1,33 +1,62 @@
 package inif
 
 import "reflect"
-
 import "fmt"
 
+//Unmarshal - сереализация данных
 func Unmarshal(data []byte, v interface{}) error {
 	rv := reflect.ValueOf(v)
-	fmt.Println("Kind: ", rv.Kind())
+	
+	//fmt.Println(reflect.TypeOf(v))
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return fmt.Errorf("type %v должен быть pointer", reflect.TypeOf(v))
 	}
-	offset := 0
-	for i, d := range data {
-		// fmt.Printf("%d : %d-%c\n", i, d, d)
-		if isNewRow(d) || i == len(data)-1 {
-			fmt.Printf("row: %s\n", string(data[offset:i+1]))
-			fillRow(data[offset:i+1], v)
-			offset = i + 1
-		}
+	fmt.Println(reflect.TypeOf(v).String())
+	switch rv.Kind() {
+	case reflect.Ptr:
+		//fmt.Println(rv.Addr())
+	case reflect.Array:
+		readArray(data, rv)
+	case reflect.Struct:
+		splitRow(data, rv)
+	default:
+		return fmt.Errorf("%v не возможно сериализовать", rv.Kind())
 	}
+	readArray(data, rv)
 	return nil
 }
 
-func fillRow(row []byte, v interface{}) {
+func readArray(arr []byte, rv reflect.Value) {
 	offset := 0
+	for i, d := range arr {
+		if isNewRow(d) || i == len(arr)-1 {			
+			fmt.Printf("row: %s\n", string(arr[offset:i+1]))
+			listField := splitRow(arr[offset:i+1], rv)
+			if len(listField) == 0 {
+				continue
+			}
+			fmt.Println(listField)
+			offset = i + 1
+		}
+	}
+}
+
+func readRow(splitRow[][]byte, rv reflect.Value) error {
+	if len(splitRow) > rv.NumField() {
+		return fmt.Errorf("в %v полей меньше чем в []byte", rv.Kind())
+	}
+	for i := 0; i < rv.NumField(); i++ {
+		
+	}
+}
+
+func splitRow(row []byte, rv reflect.Value) [][]byte {
+	listField := make([][]byte, 0)
+	offset := 0	
 	for i, r := range row {
 		if startComment(r) {
 			if len(row[offset:i+1]) > 1 {
-				fmt.Println("field: ", string(row[offset:i])) //Тут нужно привести field к нужному полю
+				listField = append(listField, row[offset:i])
 				offset = i + 1
 			}
 			break
@@ -37,10 +66,14 @@ func fillRow(row []byte, v interface{}) {
 				offset = i + 1
 				continue
 			}
-			fmt.Println("field: ", string(row[offset:i+1])) //тут нужно привести field к нужному полю
+			listField = append(listField, row[offset:i+1])			
 			offset = i + 1
 		}
+		if i == len(row) - 1 && len(row[offset:i]) > 1 {
+			listField = append(listField, row[offset:i])
+		}
 	}
+	return listField
 }
 
 func isSpace(v byte) bool {
