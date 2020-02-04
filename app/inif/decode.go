@@ -16,13 +16,12 @@ func Unmarshal(data []byte, v interface{}) error {
 	}
 	fmt.Println(rv.Elem().Kind())
 
-	row := splitRow(data, rv)
+	row := splitRow(data)
+
 	if err := readRow(row, rv.Elem()); err != nil {
 		return err
 	}
-	switch rv.Kind() {
-	case reflect.Ptr:
-		//fmt.Println(rv.Addr())
+	switch rv.Elem().Kind() {
 	case reflect.Array:
 		readArray(data, rv)
 	case reflect.Struct:
@@ -34,12 +33,14 @@ func Unmarshal(data []byte, v interface{}) error {
 	return nil
 }
 
+func readStruct(data []byte, rv reflect.Value) {}
+
 func readArray(arr []byte, rv reflect.Value) {
 	offset := 0
 	for i, d := range arr {
 		if isNewRow(d) || i == len(arr)-1 {
 			fmt.Printf("row: %s\n", string(arr[offset:i+1]))
-			listField := splitRow(arr[offset:i+1], rv)
+			listField := splitRow(arr[offset : i+1])
 			if len(listField) == 0 {
 				continue
 			}
@@ -106,31 +107,33 @@ func setSimpleValue(v reflect.Value, data []byte) error {
 	return nil
 }
 
-func splitRow(row []byte, rv reflect.Value) [][]byte {
+func splitRow(row []byte) [][]byte {
 	listField := make([][]byte, 0)
 	offset := 0
 	for i, r := range row {
+		//fmt.Println(string(r))
 		if startComment(r) {
 			if len(row[offset:i]) > 1 {
 				listField = append(listField, row[offset:i])
-				fmt.Println(string(row[offset:i]))
+				fmt.Printf("value: %s, length: %d\n", string(row[offset:i]), len(row[offset:i]))
 				offset = i + 1
 
 			}
 			break
 		}
 		if isSpace(r) {
-			if len(row[offset:i]) == 0 && isSpace(row[offset:i][0]) {
+			if len(row[offset:i]) == 0 {
 				offset = i + 1
 				continue
 			}
 			listField = append(listField, row[offset:i])
-			fmt.Println(string(row[offset:i]))
+			fmt.Printf("value: %s, length: %d\n", string(row[offset:i]), len(row[offset:i]))
+
 			offset = i + 1
 		}
 		if i == len(row)-1 && len(row[offset:i]) > 1 {
 			listField = append(listField, row[offset:i])
-			fmt.Println(string(row[offset:i]))
+			fmt.Printf("value: %s, length: %d\n", string(row[offset:i]), len(row[offset:i]))
 		}
 	}
 	return listField
