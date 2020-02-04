@@ -1,7 +1,8 @@
 package main
 
 import (
-	"encoding/json"
+	//"encoding/json"
+
 	"flag"
 	"io/ioutil"
 
@@ -13,23 +14,23 @@ import (
 
 type Settings struct {
 	ListnerIP   string
-	ListnerPort int
+	ListnerPort byte
 	ForwardIP   string
 	ForwardPort int
 }
 
 func main() {
 	path := getPath()
-	c := make(chan int)	
-	data, err := ioutil.ReadFile("config.conf")
+	c := make(chan int)
+	data, err := ioutil.ReadFile("../config.conf")
 	if err != nil {
 		logger.Fatal(err)
 	}
-	s := []Settings{}
+	s := Settings{}
 	if err := inif.Unmarshal(data, &s); err != nil {
 		logger.Fatal(err)
 	}
-		
+
 	sList, err := config.ReadConfig(path)
 	if err != nil {
 		logger.Fatal("не удалось прочитать конфигурационный файл: ", err)
