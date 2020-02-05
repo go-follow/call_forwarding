@@ -12,20 +12,17 @@ func Unmarshal(data []byte, v interface{}) error {
 
 	//fmt.Println(reflect.TypeOf(v))
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf("type %v должен быть pointer", reflect.TypeOf(v))
+		return fmt.Errorf("%v must pass a pointer, not a value, to Unmarshal", reflect.TypeOf(v))
 	}
 	fmt.Println(rv.Elem().Kind())
 
-	row := splitRow(data)
-
-	if err := readRow(row, rv.Elem()); err != nil {
-		return err
-	}
 	switch rv.Elem().Kind() {
-	case reflect.Array:
+	case reflect.Array, reflect.Slice:
 		readArray(data, rv)
 	case reflect.Struct:
-
+		if err := readRow(data, rv); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("%v не возможно сериализовать", rv.Kind())
 	}
@@ -36,27 +33,21 @@ func Unmarshal(data []byte, v interface{}) error {
 func readStruct(data []byte, rv reflect.Value) {}
 
 func readArray(arr []byte, rv reflect.Value) {
-	offset := 0
-	for i, d := range arr {
-		if isNewRow(d) || i == len(arr)-1 {
-			fmt.Printf("row: %s\n", string(arr[offset:i+1]))
-			listField := splitRow(arr[offset : i+1])
-			if len(listField) == 0 {
-				continue
-			}
-			fmt.Println(listField)
-			offset = i + 1
-		}
-	}
+	rows := splitFile(arr)
+	fmt.Println(rows)
 }
 
 //for struct
-func readRow(splitRow [][]byte, v reflect.Value) error {
-	if len(splitRow) > v.NumField() {
-		return fmt.Errorf("в %v полей меньше чем в []byte", v.Kind())
+func readRow(row []byte, v reflect.Value) error {
+	listField := splitRow(row)
+	//fmt.Println("field in file: ", len(listField))
+	//fmt.Println("fiels in struct: ", v.Elem().NumField())
+	if len(listField) > v.Elem().NumField() {
+		return fmt.Errorf("the number of fields in the structure is %d, but should be %d", 
+		v.Elem().NumField(), len(listField))
 	}
-	for i := 0; i < v.NumField(); i++ {
-		if err := setSimpleValue(v.Field(i), splitRow[i]); err != nil {
+	for i := 0; i < v.Elem().NumField(); i++ {
+		if err := setSimpleValue(v.Elem().Field(i), listField[i]); err != nil {
 			return err
 		}
 	}
@@ -107,17 +98,38 @@ func setSimpleValue(v reflect.Value, data []byte) error {
 	return nil
 }
 
+func splitFile(data []byte) [][]byte {
+	listField := make([][]byte, 0)
+	offset := 0
+	for i, d := range data {
+		if isNewRow(d) {
+			if len(data[offset:i]) == 0 {
+				offset = i + 1
+				continue
+			}
+			listField = append(listField, data[offset:i])
+			fmt.Printf("value: %s, length: %d\n", string(data[offset:i]), len(data[offset:i]))
+
+			offset = i + 1
+		}
+		if i == len(data)-1 && len(data[offset:i]) > 1 {
+			listField = append(listField, data[offset:i])
+			fmt.Printf("value: %s, length: %d\n", string(data[offset:i]), len(data[offset:i]))
+		}
+	}
+	return listField
+}
+
 func splitRow(row []byte) [][]byte {
 	listField := make([][]byte, 0)
 	offset := 0
 	for i, r := range row {
-		//fmt.Println(string(r))
+		//fmt.Println(string(r))		
 		if startComment(r) {
 			if len(row[offset:i]) > 1 {
 				listField = append(listField, row[offset:i])
 				fmt.Printf("value: %s, length: %d\n", string(row[offset:i]), len(row[offset:i]))
 				offset = i + 1
-
 			}
 			break
 		}

@@ -14,9 +14,9 @@ import (
 
 type Settings struct {
 	ListnerIP   string
-	ListnerPort byte
+	ListnerPort int32
 	ForwardIP   string
-	ForwardPort int
+	ForwardPort int64
 }
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	s := Settings{}
+	s := []Settings{}
 	if err := inif.Unmarshal(data, &s); err != nil {
 		logger.Fatal(err)
 	}
