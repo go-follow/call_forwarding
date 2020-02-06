@@ -2,7 +2,6 @@ package main
 
 import (
 	//"encoding/json"
-
 	"flag"
 	"io/ioutil"
 
@@ -30,6 +29,7 @@ func main() {
 	if err := inif.Unmarshal(data, &s); err != nil {
 		logger.Fatal(err)
 	}
+	//json.Unmarshal()
 
 	sList, err := config.ReadConfig(path)
 	if err != nil {
