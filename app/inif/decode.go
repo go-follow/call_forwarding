@@ -10,7 +10,7 @@ import (
 //Unmarshal - сереализация данных
 func Unmarshal(data []byte, v interface{}) error {
 	rv := reflect.ValueOf(v)
-	//fmt.Println(reflect.TypeOf(v))
+	fmt.Println("Type: ", reflect.TypeOf(v))
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return fmt.Errorf("%v must pass a pointer, not a value, to Unmarshal", reflect.TypeOf(v))
 	}
@@ -31,35 +31,89 @@ func Unmarshal(data []byte, v interface{}) error {
 
 func readStruct(data []byte, rv reflect.Value) {}
 
-func readArray(arr []byte, rv reflect.Value) {
+func readArray(arr []byte, rv reflect.Value) error {
 	listRows := splitFile(arr)
 	for _, r := range listRows {
 		if len(bytes.Trim(r, " ")) == 0 {
 			continue
 		}
-		arr := reflect.ValueOf(rv.Type().Elem())
-		fmt.Println("arr: ", arr)
-		structValue := reflect.ValueOf(rv.Type().Elem().Elem())
-		fmt.Println("structValue: ", structValue)
-		readRow(r, structValue)
-		return				
-	}
+		arr := reflect.Indirect(rv)
+		if !arr.CanSet() {
+			return fmt.Errorf("non-set value for %v", rv)
+		}
+		sliceElemValue := reflect.Zero(rv.Type().Elem().Elem())
+		newElem := reflect.ValueOf(&sliceElemValue)
+		fmt.Println("rv.Type: ", rv.Type())
+		fmt.Println("rv.Elem: ", rv.Elem().Type().Elem())
+		fmt.Println("rv.Type.Elem: ", rv.Type().Elem())
+		fmt.Println("rv.Type.Elem.Elem: ", rv.Type().Elem().Elem())
 
+		fmt.Println(newElem.Elem().CanSet())
+		if err := readRow(r, newElem.Elem()); err != nil {
+			return err
+		}
+
+		arr.Set(reflect.Append(arr, newElem))
+	}
+	return nil
 }
 
 //for struct
 func readRow(row []byte, v reflect.Value) error {
 	listField := splitRow(row)
-	//fmt.Println("field in file: ", len(listField))
-	//fmt.Println("fiels in struct: ", v.Elem().NumField())
-	if len(listField) > v.Elem().NumField() {
-		return fmt.Errorf("the number of fields in the structure is %d, but should be %d",
-			v.Elem().NumField(), len(listField))
-	}
-	for i := 0; i < v.Elem().NumField(); i++ {
-		if err := setSimpleValue(v.Elem().Field(i), listField[i]); err != nil {
+	fmt.Println("len v.NumField: ", (v.NumField()))
+	// if len(listField) > v.NumField() {
+	// 	return fmt.Errorf("the number of fields in the structure is %d, but should be %d",
+	// 		v.NumField(), len(listField))
+	// }
+	for i := 0; i < v.NumField(); i++ {
+		fmt.Println(v.Field(i))
+		if err := setSimpleValue(v.Field(i), listField[i]); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func setSimpleValue(v reflect.Value, data []byte) error {
+	if !v.CanSet() {
+		return fmt.Errorf("%v not possible to set value", v.Kind())
+	}
+	switch v.Kind() {
+	case reflect.Bool:
+		x, err := strconv.ParseBool(string(data))
+		if err != nil {
+			return err
+		}
+		v.SetBool(x)
+	case reflect.String:
+		v.SetString(string(data))
+	case reflect.Int:
+		x, err := strconv.Atoi(string(data))
+		if err != nil {
+			return err
+		}
+		v.SetInt(int64(x))
+	case reflect.Int8, reflect.Uint8:
+		x, err := strconv.ParseInt(string(data), 10, 8)
+		if err != nil {
+			return err
+		}
+		v.SetInt(x)
+	case reflect.Int32:
+		x, err := strconv.ParseInt(string(data), 10, 32)
+		if err != nil {
+			return err
+		}
+		v.SetInt(x)
+	case reflect.Int64:
+		x, err := strconv.ParseInt(string(data), 10, 64)
+		if err != nil {
+			return err
+		}
+		v.SetInt(x)
+	default:
+		return fmt.Errorf("%v not simple type", v.Kind())
 	}
 	return nil
 }
@@ -127,50 +181,6 @@ func splitRow(row []byte) [][]byte {
 		}
 	}
 	return listField
-}
-
-func setSimpleValue(v reflect.Value, data []byte) error {
-	if !v.CanAddr() || !v.CanSet() {
-		return fmt.Errorf("%v not possible to set value", v.Kind())
-	}
-	fmt.Println(v.Kind())
-	switch v.Kind() {
-	case reflect.Bool:
-		x, err := strconv.ParseBool(string(data))
-		if err != nil {
-			return err
-		}
-		v.SetBool(x)
-	case reflect.String:
-		v.SetString(string(data))
-	case reflect.Int:
-		x, err := strconv.Atoi(string(data))
-		if err != nil {
-			return err
-		}
-		v.SetInt(int64(x))
-	case reflect.Int8, reflect.Uint8:
-		x, err := strconv.ParseInt(string(data), 10, 8)
-		if err != nil {
-			return err
-		}
-		v.SetInt(x)
-	case reflect.Int32:
-		x, err := strconv.ParseInt(string(data), 10, 32)
-		if err != nil {
-			return err
-		}
-		v.SetInt(x)
-	case reflect.Int64:
-		x, err := strconv.ParseInt(string(data), 10, 64)
-		if err != nil {
-			return err
-		}
-		v.SetInt(x)
-	default:
-		return fmt.Errorf("%v not simple type", v.Kind())
-	}
-	return nil
 }
 
 func isSpace(v byte) bool {
