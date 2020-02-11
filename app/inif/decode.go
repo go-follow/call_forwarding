@@ -44,7 +44,6 @@ func readArray(arr []byte, rv reflect.Value) error {
 		sliceElemValue := reflect.Zero(rv.Type().Elem().Elem())
 		newElem := reflect.ValueOf(&sliceElemValue)
 		fmt.Println("rv.Type: ", rv.Type())
-		fmt.Println("rv.Elem: ", rv.Elem().Type().Elem())
 		fmt.Println("rv.Type.Elem: ", rv.Type().Elem())
 		fmt.Println("rv.Type.Elem.Elem: ", rv.Type().Elem().Elem())
 
