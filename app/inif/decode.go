@@ -17,16 +17,12 @@ func Unmarshal(data []byte, v interface{}) error {
 
 	switch rv.Elem().Kind() {
 	case reflect.Array, reflect.Slice:
-		readArray(data, rv)
+		return readArray(data, rv)			
 	case reflect.Struct:
-		if err := readRow(data, rv); err != nil {
-			return err
-		}
+		return readRow(data, rv.Elem())
 	default:
-		return fmt.Errorf("%v не возможно сериализовать", rv.Kind())
-	}
-	readArray(data, rv)
-	return nil
+		return fmt.Errorf("not possible to serialize type %v", rv.Elem().Kind())
+	}	
 }
 
 func readStruct(data []byte, rv reflect.Value) {}
@@ -34,25 +30,19 @@ func readStruct(data []byte, rv reflect.Value) {}
 func readArray(arr []byte, rv reflect.Value) error {
 	listRows := splitFile(arr)
 	for _, r := range listRows {
-		if len(bytes.Trim(r, " ")) == 0 {
+		if len(bytes.Trim(r, " ")) == 0 {						
 			continue
 		}
 		arr := reflect.Indirect(rv)
 		if !arr.CanSet() {
-			return fmt.Errorf("non-set value for %v", rv)
+			return fmt.Errorf("%v not possible to set value", rv.Kind())
 		}
 		sliceElemValue := reflect.Zero(rv.Type().Elem().Elem())
-		newElem := reflect.ValueOf(&sliceElemValue)
-		fmt.Println("rv.Type: ", rv.Type())
-		fmt.Println("rv.Type.Elem: ", rv.Type().Elem())
-		fmt.Println("rv.Type.Elem.Elem: ", rv.Type().Elem().Elem())
+		arr.Set(reflect.Append(arr, sliceElemValue))
 
-		fmt.Println(newElem.Elem().CanSet())
-		if err := readRow(r, newElem.Elem()); err != nil {
+		if err := readRow(r, arr.Index(arr.Len() - 1)); err != nil {
 			return err
 		}
-
-		arr.Set(reflect.Append(arr, newElem))
 	}
 	return nil
 }
@@ -60,13 +50,12 @@ func readArray(arr []byte, rv reflect.Value) error {
 //for struct
 func readRow(row []byte, v reflect.Value) error {
 	listField := splitRow(row)
-	fmt.Println("len v.NumField: ", (v.NumField()))
-	// if len(listField) > v.NumField() {
-	// 	return fmt.Errorf("the number of fields in the structure is %d, but should be %d",
-	// 		v.NumField(), len(listField))
-	// }
+
+	if len(listField) > v.NumField() {
+		return fmt.Errorf("the number of fields in the structure is %d, but should be %d",
+			v.NumField(), len(listField))
+	}
 	for i := 0; i < v.NumField(); i++ {
-		fmt.Println(v.Field(i))
 		if err := setSimpleValue(v.Field(i), listField[i]); err != nil {
 			return err
 		}
@@ -104,7 +93,7 @@ func setSimpleValue(v reflect.Value, data []byte) error {
 		if err != nil {
 			return err
 		}
-		v.SetInt(x)
+		v.SetInt(int32(data))
 	case reflect.Int64:
 		x, err := strconv.ParseInt(string(data), 10, 64)
 		if err != nil {
@@ -168,7 +157,7 @@ func splitRow(row []byte) [][]byte {
 			break
 		}
 		if isSpace(r) {
-			if len(row[offset:i]) == 0 {
+			if len(row[offset:i]) == 0 || isNewRow(r) {
 				offset = i + 1
 				continue
 			}
