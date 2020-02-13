@@ -56,54 +56,115 @@ func readRow(row []byte, v reflect.Value) error {
 			v.NumField(), len(listField))
 	}
 	for i := 0; i < v.NumField(); i++ {
-		if err := setSimpleValue(v.Field(i), listField[i]); err != nil {
+		if err := setSimpleValue(listField[i], v.Field(i)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func setSimpleValue(v reflect.Value, data []byte) error {
+func setSimpleValue(data []byte, v reflect.Value) error {
 	if !v.CanSet() {
 		return fmt.Errorf("%v not possible to set value", v.Kind())
 	}
 	switch v.Kind() {
 	case reflect.Bool:
-		x, err := strconv.ParseBool(string(data))
+		b, err := strconv.ParseBool(string(data))
 		if err != nil {
 			return err
 		}
-		v.SetBool(x)
+		v.SetBool(b)
+		return nil
 	case reflect.String:
 		v.SetString(string(data))
-	case reflect.Int:
-		x, err := strconv.Atoi(string(data))
+		return nil
+	case reflect.Int:		
+		d, err := strconv.ParseInt(string(data), 10, 0)
 		if err != nil {
 			return err
 		}
-		v.SetInt(int64(x))
-	case reflect.Int8, reflect.Uint8:
-		x, err := strconv.ParseInt(string(data), 10, 8)
+		v.SetInt(d)
+		return nil
+	case reflect.Uint:
+		d, err := strconv.ParseUint(string(data), 10, 0)
 		if err != nil {
 			return err
 		}
-		v.SetInt(x)
+		v.SetUint(d)
+		return nil
+	case reflect.Int8:
+		d, err := strconv.ParseInt(string(data), 10, 8)
+		if err != nil {
+			return err
+		}
+		v.SetInt(d)
+		return nil
+	case reflect.Uint8:
+		d, err := strconv.ParseUint(string(data), 10, 8)
+		if err != nil {
+			return err
+		}
+		v.SetUint(d)
+		return nil
+	case reflect.Int16:
+		d, err := strconv.ParseInt(string(data), 10, 16)
+		if err != nil {
+			return err
+		}
+		v.SetInt(d)
+		return nil
+	case reflect.Uint16:
+		d, err := strconv.ParseUint(string(data), 10, 16)
+		if err != nil {
+			return err
+		}
+		v.SetUint(d)
+		return nil
 	case reflect.Int32:
-		x, err := strconv.ParseInt(string(data), 10, 32)
+		d, err := strconv.ParseInt(string(data), 10, 32)
 		if err != nil {
 			return err
 		}
-		v.SetInt(int32(data))
+		v.SetInt(d)
+		return nil
+	case reflect.Uint32:
+		d, err := strconv.ParseUint(string(data), 10, 32)
+		if err != nil {
+			return err
+		}
+		v.SetUint(d)
+		return nil
 	case reflect.Int64:
-		x, err := strconv.ParseInt(string(data), 10, 64)
+		d, err := strconv.ParseInt(string(data), 10, 64)
 		if err != nil {
 			return err
 		}
-		v.SetInt(x)
+		v.SetInt(d)
+		return nil
+	case reflect.Uint64:
+		d, err := strconv.ParseUint(string(data), 10, 64)
+		if err != nil {
+			return err
+		}
+		v.SetUint(d)
+		return nil
+	case reflect.Float32:
+		d, err := strconv.ParseFloat(string(data), 32)
+		if err != nil {
+			return err
+		}
+		v.SetFloat(d)
+		return nil
+	case reflect.Float64:
+		d, err := strconv.ParseFloat(string(data), 64)
+		if err != nil {
+			return err
+		}
+		v.SetFloat(d)
+		return nil
 	default:
 		return fmt.Errorf("%v not simple type", v.Kind())
-	}
-	return nil
+	}	
 }
 
 func splitFile(data []byte) [][]byte {
