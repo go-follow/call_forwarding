@@ -28,7 +28,7 @@ func Unmarshal(data []byte, v interface{}) error {
 func readStruct(data []byte, rv reflect.Value) {}
 
 func readArray(arr []byte, rv reflect.Value) error {
-	listRows := splitFile(arr)
+	listRows := split(arr, isNewRow)
 	for _, r := range listRows {
 		if len(bytes.Trim(r, " ")) == 0 {						
 			continue
@@ -67,98 +67,99 @@ func setSimpleValue(data []byte, v reflect.Value) error {
 	if !v.CanSet() {
 		return fmt.Errorf("%v not possible to set value", v.Kind())
 	}
+	s := string(data)
 	switch v.Kind() {
 	case reflect.Bool:
-		b, err := strconv.ParseBool(string(data))
+		b, err := strconv.ParseBool(s)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type bool: %v", s, err)
 		}
 		v.SetBool(b)
-		return nil
+		return nil		
 	case reflect.String:
-		v.SetString(string(data))
+		v.SetString(s)
 		return nil
 	case reflect.Int:		
-		d, err := strconv.ParseInt(string(data), 10, 0)
+		d, err := strconv.ParseInt(s, 10, 0)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type int: %v", s, err)
 		}
 		v.SetInt(d)
 		return nil
 	case reflect.Uint:
 		d, err := strconv.ParseUint(string(data), 10, 0)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type uint: %v", s, err)
 		}
 		v.SetUint(d)
 		return nil
 	case reflect.Int8:
-		d, err := strconv.ParseInt(string(data), 10, 8)
+		d, err := strconv.ParseInt(s, 10, 8)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type int8: %v", s, err)
 		}
 		v.SetInt(d)
 		return nil
 	case reflect.Uint8:
-		d, err := strconv.ParseUint(string(data), 10, 8)
+		d, err := strconv.ParseUint(s, 10, 8)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type uint8: %v", s, err)
 		}
 		v.SetUint(d)
 		return nil
 	case reflect.Int16:
-		d, err := strconv.ParseInt(string(data), 10, 16)
+		d, err := strconv.ParseInt(s, 10, 16)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type int16: %v", s, err)
 		}
 		v.SetInt(d)
 		return nil
 	case reflect.Uint16:
-		d, err := strconv.ParseUint(string(data), 10, 16)
+		d, err := strconv.ParseUint(s, 10, 16)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type uint16: %v", s, err)
 		}
 		v.SetUint(d)
 		return nil
 	case reflect.Int32:
-		d, err := strconv.ParseInt(string(data), 10, 32)
+		d, err := strconv.ParseInt(s, 10, 32)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type int32: %v", s, err)
 		}
 		v.SetInt(d)
 		return nil
 	case reflect.Uint32:
 		d, err := strconv.ParseUint(string(data), 10, 32)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type uint32: %v", s, err)
 		}
 		v.SetUint(d)
 		return nil
 	case reflect.Int64:
 		d, err := strconv.ParseInt(string(data), 10, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type int64: %v", s, err)
 		}
 		v.SetInt(d)
 		return nil
 	case reflect.Uint64:
 		d, err := strconv.ParseUint(string(data), 10, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type uint64: %v", s, err)
 		}
 		v.SetUint(d)
 		return nil
 	case reflect.Float32:
 		d, err := strconv.ParseFloat(string(data), 32)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type float32: %v", s, err)
 		}
 		v.SetFloat(d)
 		return nil
 	case reflect.Float64:
 		d, err := strconv.ParseFloat(string(data), 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to cast '%s' to type float64: %v", s, err)
 		}
 		v.SetFloat(d)
 		return nil
@@ -167,7 +168,7 @@ func setSimpleValue(data []byte, v reflect.Value) error {
 	}	
 }
 
-func splitFile(data []byte) [][]byte {
+func split(data []byte, isSplit func(b byte) bool) [][]byte {
 	listField := make([][]byte, 0)
 	offset := 0
 	startComment := -1
@@ -176,10 +177,10 @@ func splitFile(data []byte) [][]byte {
 			startComment = i //запоминаем старт для комментариев
 			continue
 		}
-		if isNewRow(d) {
-			if startComment > 0 {
+		if isSplit(d) {
+			if startComment >= 0 {
 				listField = append(listField, data[offset:startComment])
-				// fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
+				fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
 				offset = i + 1
 				startComment = -1 //сбрасывем старт для комментариев
 				continue
@@ -190,17 +191,17 @@ func splitFile(data []byte) [][]byte {
 				continue
 			}
 			listField = append(listField, data[offset:i])
-			// fmt.Printf("value: %s, length: %d\n", string(data[offset:i]), len(data[offset:i]))
+			fmt.Printf("value: %s, length: %d\n", string(data[offset:i]), len(data[offset:i]))
 			offset = i + 1
 		}
 		if i == len(data)-1 && len(data[offset:i+1]) > 0 {
 			if startComment > 0 {
 				listField = append(listField, data[offset:startComment])
-				// fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
+				fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
 				continue
 			}
 			listField = append(listField, data[offset:i+1])
-			// fmt.Printf("value: %s, length: %d\n", string(data[offset:i + 1]), len(data[offset:i + 1]))
+			fmt.Printf("value: %s, length: %d\n", string(data[offset:i + 1]), len(data[offset:i + 1]))
 		}
 	}
 	return listField
@@ -211,14 +212,17 @@ func splitRow(row []byte) [][]byte {
 	offset := 0
 	for i, r := range row {
 		if isStartComment(r) {
+			//для коментариев после строки
 			if len(row[offset:i]) > 1 {
 				listField = append(listField, row[offset:i])
 				offset = i + 1
-			}
-			break
+				break
+			} else {
+				continue
+			}			
 		}
 		if isSpace(r) {
-			if len(row[offset:i]) == 0 || isNewRow(r) {
+			if len(row[offset:i]) == 0 || isNewRow(row[offset:i][0]) {
 				offset = i + 1
 				continue
 			}

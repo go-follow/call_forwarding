@@ -13,7 +13,7 @@ import (
 
 type Settings struct {
 	ListnerIP   string
-	ListnerPort int32
+	ListnerPort float32
 	ForwardIP   string
 	ForwardPort int64
 }
