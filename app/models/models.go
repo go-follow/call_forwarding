@@ -6,5 +6,4 @@ type Settings struct {
 	ListnerPort int
 	ForwardIP   string
 	ForwardPort int
-	Comment     string
 }
