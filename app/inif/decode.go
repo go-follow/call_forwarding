@@ -19,20 +19,26 @@ func Unmarshal(data []byte, v interface{}) error {
 	case reflect.Array, reflect.Slice:
 		return readArray(data, rv)			
 	case reflect.Struct:
-		return readRow(data, rv.Elem())
+		return readStruct(data, rv.Elem())
 	default:
 		return fmt.Errorf("not possible to serialize type %v", rv.Elem().Kind())
 	}	
 }
 
-func readStruct(data []byte, rv reflect.Value) {}
+func readStruct(data []byte, rv reflect.Value) error{
+	listRows := split(data, isNewRow)
+	if len (listRows) > 1 {
+		return fmt.Errorf("there should be only one entry for the structure type, but there are %d of them", len(listRows))
+	}
+	if err := readRow(listRows[0], rv); err != nil {
+		return err
+	}
+	return nil
+}
 
 func readArray(arr []byte, rv reflect.Value) error {
 	listRows := split(arr, isNewRow)
-	for _, r := range listRows {
-		if len(bytes.Trim(r, " ")) == 0 {						
-			continue
-		}
+	for _, r := range listRows {		
 		arr := reflect.Indirect(rv)
 		if !arr.CanSet() {
 			return fmt.Errorf("%v not possible to set value", rv.Kind())
@@ -204,7 +210,18 @@ func split(data []byte, isSplit func(b byte) bool) [][]byte {
 			fmt.Printf("value: %s, length: %d\n", string(data[offset:i + 1]), len(data[offset:i + 1]))
 		}
 	}
-	return listField
+	return filterRows(listField)
+}
+
+func filterRows(listRows [][]byte) [][]byte {
+	filter := make([][]byte, 0)
+	for _, r := range listRows {
+		if len(bytes.Trim(r, " ")) == 0 {
+			continue
+		}
+		filter = append(filter, r)
+	}
+	return filter
 }
 
 func splitRow(row []byte) [][]byte {
