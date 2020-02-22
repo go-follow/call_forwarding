@@ -25,7 +25,8 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	s := Settings{}
+	s := []Settings{}
+
 	if err := inif.Unmarshal(data, &s); err != nil {
 		logger.Fatal(err)
 	}

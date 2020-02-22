@@ -10,7 +10,6 @@ import (
 //Unmarshal - сереализация данных
 func Unmarshal(data []byte, v interface{}) error {
 	rv := reflect.ValueOf(v)
-	fmt.Println("Type: ", reflect.TypeOf(v))
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return fmt.Errorf("%v must pass a pointer, not a value, to Unmarshal", reflect.TypeOf(v))
 	}
