@@ -19,9 +19,26 @@ func Unmarshal(data []byte, v interface{}) error {
 		return readArray(data, rv)
 	case reflect.Struct:
 		return readStruct(data, rv.Elem())
+	case reflect.Bool, reflect.String, reflect.Int64, reflect.Uint64,
+		reflect.Int32, reflect.Uint32, reflect.Int16, reflect.Uint16,
+		reflect.Int8, reflect.Uint8, reflect.Float64, reflect.Float32,
+		reflect.Int, reflect.Uint:
+		return readSimple(data, rv.Elem())
 	default:
 		return fmt.Errorf("not possible to serialize type %v", rv.Elem().Kind())
 	}
+}
+
+func readSimple(data []byte, rv reflect.Value) error {
+	listRows := split(data, isNewRow)
+	if len(listRows) > 1 {
+		return fmt.Errorf("there should be only one sipmle value for type %v", rv.Kind())
+	}
+	listField := splitRow(listRows[0])
+	if len(listField) > 1 {
+		return fmt.Errorf("for type %v should be only field, but got %d fields", rv.Kind(), len(listField))
+	}
+	return setSimpleValue(listField[0], rv)
 }
 
 func readStruct(data []byte, rv reflect.Value) error {
@@ -35,13 +52,30 @@ func readStruct(data []byte, rv reflect.Value) error {
 	return nil
 }
 
+func readRow(row []byte, v reflect.Value) error {
+	listField := splitRow(row)
+	if v.Kind() != reflect.Struct {
+		return setSimpleValue(listField[0], v)			
+	}
+	if len(listField) > v.NumField() {
+		return fmt.Errorf("the number of fields in the structure is %d, but should be %d",
+			v.NumField(), len(listField))
+	}
+	for i := 0; i < len(listField); i++ {
+		if err := setSimpleValue(listField[i], v.Field(i)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func readArray(arr []byte, rv reflect.Value) error {
 	listRows := split(arr, isNewRow)
 	for _, r := range listRows {
 		arr := reflect.Indirect(rv)
 		if !arr.CanSet() {
 			return fmt.Errorf("%v not possible to set value", rv.Kind())
-		}		
+		}
 		newValue := reflect.New(rv.Type().Elem().Elem()).Interface()
 		arrElem := reflect.ValueOf(newValue)
 		if rv.Type().Elem().Elem().Kind() == reflect.Ptr {
@@ -55,23 +89,7 @@ func readArray(arr []byte, rv reflect.Value) error {
 			arr.Set(reflect.Append(arr, arrElem))
 			continue
 		}
-		arr.Set(reflect.Append(arr, arrElem.Elem()))		
-	}
-	return nil
-}
-
-//for struct
-func readRow(row []byte, v reflect.Value) error {
-	listField := splitRow(row)
-
-	if len(listField) > v.NumField() {
-		return fmt.Errorf("the number of fields in the structure is %d, but should be %d",
-			v.NumField(), len(listField))
-	}
-	for i := 0; i < v.NumField(); i++ {
-		if err := setSimpleValue(listField[i], v.Field(i)); err != nil {
-			return err
-		}
+		arr.Set(reflect.Append(arr, arrElem.Elem()))
 	}
 	return nil
 }
@@ -217,13 +235,13 @@ func split(data []byte, isSplit func(b byte) bool) [][]byte {
 			//fmt.Printf("value: %s, length: %d\n", string(data[offset:i + 1]), len(data[offset:i + 1]))
 		}
 	}
-	return filterRows(listField)
+	return filter(listField)
 }
 
-func filterRows(listRows [][]byte) [][]byte {
+func filter(list [][]byte) [][]byte {
 	filter := make([][]byte, 0)
-	for _, r := range listRows {
-		if len(bytes.Trim(r, " ")) == 0 {
+	for _, r := range list {
+		if len(bytes.Trim(r, " ")) == 0 || len(bytes.Trim(r, "#")) == 0 {
 			continue
 		}
 		filter = append(filter, r)
@@ -257,7 +275,7 @@ func splitRow(row []byte) [][]byte {
 			listField = append(listField, row[offset:i+1])
 		}
 	}
-	return listField
+	return filter(listField)
 }
 
 func isSpace(v byte) bool {
