@@ -18,13 +18,13 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	sList := []*models.Settings{}
+	sList := []models.Settings{}
 	if err := inif.Unmarshal(data, &sList); err != nil {
 		logger.Fatal(err)
 	}
 
 	for _, s := range sList {
-		f, err := forward.NewForward(s)
+		f, err := forward.NewForward(&s)
 		if err != nil {
 			logger.Error(err)
 			continue

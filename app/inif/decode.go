@@ -41,24 +41,21 @@ func readArray(arr []byte, rv reflect.Value) error {
 		arr := reflect.Indirect(rv)
 		if !arr.CanSet() {
 			return fmt.Errorf("%v not possible to set value", rv.Kind())
-		}
-		fmt.Println("Before: ", rv.Type().Elem().Elem().Kind()) //если стракт то 2 Elem(), иначе 3 Elem()
-		var sliceElemValue reflect.Value
+		}		
+		newValue := reflect.New(rv.Type().Elem().Elem()).Interface()
+		arrElem := reflect.ValueOf(newValue)
 		if rv.Type().Elem().Elem().Kind() == reflect.Ptr {
-			fmt.Println(rv.Type().Elem().Elem().Elem())
-			sliceElemValue = reflect.Zero(rv.Type().Elem().Elem().Elem())
-		} else {
-			fmt.Println(rv.Type().Elem().Elem())
-			sliceElemValue = reflect.Zero(rv.Type().Elem().Elem())
+			newValue = reflect.New(rv.Type().Elem().Elem().Elem()).Interface()
+			arrElem = reflect.ValueOf(newValue)
 		}
-
-		fmt.Println("After: ", sliceElemValue)
-		fmt.Println(sliceElemValue.CanSet())
-		arr.Set(reflect.Append(arr, sliceElemValue))
-		fmt.Println(arr.Index(arr.Len() - 1))
-		if err := readRow(r, arr.Index(arr.Len()-1)); err != nil {
+		if err := readRow(r, arrElem.Elem()); err != nil {
 			return err
 		}
+		if rv.Type().Elem().Elem().Kind() == reflect.Ptr {
+			arr.Set(reflect.Append(arr, arrElem))
+			continue
+		}
+		arr.Set(reflect.Append(arr, arrElem.Elem()))		
 	}
 	return nil
 }
@@ -66,6 +63,7 @@ func readArray(arr []byte, rv reflect.Value) error {
 //for struct
 func readRow(row []byte, v reflect.Value) error {
 	listField := splitRow(row)
+
 	if len(listField) > v.NumField() {
 		return fmt.Errorf("the number of fields in the structure is %d, but should be %d",
 			v.NumField(), len(listField))
