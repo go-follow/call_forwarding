@@ -211,7 +211,6 @@ func split(data []byte, isSplit func(b byte) bool) [][]byte {
 		if isSplit(d) {
 			if startComment >= 0 {
 				listField = append(listField, data[offset:startComment])
-				//fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
 				offset = i + 1
 				startComment = -1 //сбрасывем старт для комментариев
 				continue
@@ -222,17 +221,14 @@ func split(data []byte, isSplit func(b byte) bool) [][]byte {
 				continue
 			}
 			listField = append(listField, data[offset:i])
-			//fmt.Printf("value: %s, length: %d\n", string(data[offset:i]), len(data[offset:i]))
 			offset = i + 1
 		}
 		if i == len(data)-1 && len(data[offset:i+1]) > 0 {
 			if startComment > 0 {
 				listField = append(listField, data[offset:startComment])
-				//fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
 				continue
 			}
-			listField = append(listField, data[offset:i+1])
-			//fmt.Printf("value: %s, length: %d\n", string(data[offset:i + 1]), len(data[offset:i + 1]))
+			listField = append(listField, data[offset:i+1])		
 		}
 	}
 	return filter(listField)
