@@ -16,30 +16,47 @@ func Unmarshal(data []byte, v interface{}) error {
 
 	switch rv.Elem().Kind() {
 	case reflect.Array, reflect.Slice:
-		return readArray(data, rv)			
+		return readArray(data, rv)
 	case reflect.Struct:
-		return readRow(data, rv.Elem())
+		return readStruct(data, rv.Elem())
 	default:
 		return fmt.Errorf("not possible to serialize type %v", rv.Elem().Kind())
-	}	
+	}
 }
 
-func readStruct(data []byte, rv reflect.Value) {}
+func readStruct(data []byte, rv reflect.Value) error {
+	listRows := split(data, isNewRow)
+	if len(listRows) > 1 {
+		return fmt.Errorf("there should be only one entry for the structure type, but there are %d of them", len(listRows))
+	}
+	if err := readRow(listRows[0], rv); err != nil {
+		return err
+	}
+	return nil
+}
 
 func readArray(arr []byte, rv reflect.Value) error {
 	listRows := split(arr, isNewRow)
 	for _, r := range listRows {
-		if len(bytes.Trim(r, " ")) == 0 {						
-			continue
-		}
 		arr := reflect.Indirect(rv)
 		if !arr.CanSet() {
 			return fmt.Errorf("%v not possible to set value", rv.Kind())
 		}
-		sliceElemValue := reflect.Zero(rv.Type().Elem().Elem())
-		arr.Set(reflect.Append(arr, sliceElemValue))
+		fmt.Println("Before: ", rv.Type().Elem().Elem().Kind()) //если стракт то 2 Elem(), иначе 3 Elem()
+		var sliceElemValue reflect.Value
+		if rv.Type().Elem().Elem().Kind() == reflect.Ptr {
+			fmt.Println(rv.Type().Elem().Elem().Elem())
+			sliceElemValue = reflect.Zero(rv.Type().Elem().Elem().Elem())
+		} else {
+			fmt.Println(rv.Type().Elem().Elem())
+			sliceElemValue = reflect.Zero(rv.Type().Elem().Elem())
+		}
 
-		if err := readRow(r, arr.Index(arr.Len() - 1)); err != nil {
+		fmt.Println("After: ", sliceElemValue)
+		fmt.Println(sliceElemValue.CanSet())
+		arr.Set(reflect.Append(arr, sliceElemValue))
+		fmt.Println(arr.Index(arr.Len() - 1))
+		if err := readRow(r, arr.Index(arr.Len()-1)); err != nil {
 			return err
 		}
 	}
@@ -49,7 +66,6 @@ func readArray(arr []byte, rv reflect.Value) error {
 //for struct
 func readRow(row []byte, v reflect.Value) error {
 	listField := splitRow(row)
-
 	if len(listField) > v.NumField() {
 		return fmt.Errorf("the number of fields in the structure is %d, but should be %d",
 			v.NumField(), len(listField))
@@ -74,11 +90,11 @@ func setSimpleValue(data []byte, v reflect.Value) error {
 			return fmt.Errorf("failed to cast '%s' to type bool: %v", s, err)
 		}
 		v.SetBool(b)
-		return nil		
+		return nil
 	case reflect.String:
 		v.SetString(s)
 		return nil
-	case reflect.Int:		
+	case reflect.Int:
 		d, err := strconv.ParseInt(s, 10, 0)
 		if err != nil {
 			return fmt.Errorf("failed to cast '%s' to type int: %v", s, err)
@@ -164,7 +180,7 @@ func setSimpleValue(data []byte, v reflect.Value) error {
 		return nil
 	default:
 		return fmt.Errorf("%v not simple type", v.Kind())
-	}	
+	}
 }
 
 func split(data []byte, isSplit func(b byte) bool) [][]byte {
@@ -179,7 +195,7 @@ func split(data []byte, isSplit func(b byte) bool) [][]byte {
 		if isSplit(d) {
 			if startComment >= 0 {
 				listField = append(listField, data[offset:startComment])
-				fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
+				//fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
 				offset = i + 1
 				startComment = -1 //сбрасывем старт для комментариев
 				continue
@@ -190,20 +206,31 @@ func split(data []byte, isSplit func(b byte) bool) [][]byte {
 				continue
 			}
 			listField = append(listField, data[offset:i])
-			fmt.Printf("value: %s, length: %d\n", string(data[offset:i]), len(data[offset:i]))
+			//fmt.Printf("value: %s, length: %d\n", string(data[offset:i]), len(data[offset:i]))
 			offset = i + 1
 		}
 		if i == len(data)-1 && len(data[offset:i+1]) > 0 {
 			if startComment > 0 {
 				listField = append(listField, data[offset:startComment])
-				fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
+				//fmt.Printf("value: %s, length: %d\n", string(data[offset:startComment]), len(data[offset:startComment]))
 				continue
 			}
 			listField = append(listField, data[offset:i+1])
-			fmt.Printf("value: %s, length: %d\n", string(data[offset:i + 1]), len(data[offset:i + 1]))
+			//fmt.Printf("value: %s, length: %d\n", string(data[offset:i + 1]), len(data[offset:i + 1]))
 		}
 	}
-	return listField
+	return filterRows(listField)
+}
+
+func filterRows(listRows [][]byte) [][]byte {
+	filter := make([][]byte, 0)
+	for _, r := range listRows {
+		if len(bytes.Trim(r, " ")) == 0 {
+			continue
+		}
+		filter = append(filter, r)
+	}
+	return filter
 }
 
 func splitRow(row []byte) [][]byte {
@@ -218,7 +245,7 @@ func splitRow(row []byte) [][]byte {
 				break
 			} else {
 				continue
-			}			
+			}
 		}
 		if isSpace(r) {
 			if len(row[offset:i]) == 0 || isNewRow(row[offset:i][0]) {

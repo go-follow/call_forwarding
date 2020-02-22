@@ -5,35 +5,22 @@ import (
 	"flag"
 	"io/ioutil"
 
-	"github.com/go-follow/call_forwarding/app/config"
 	"github.com/go-follow/call_forwarding/app/forward"
 	"github.com/go-follow/call_forwarding/app/inif"
+	"github.com/go-follow/call_forwarding/app/models"
 	"github.com/go-follow/call_forwarding/logger"
 )
-
-type Settings struct {
-	ListnerIP   string
-	ListnerPort float32
-	ForwardIP   string
-	ForwardPort int64
-}
 
 func main() {
 	path := getPath()
 	c := make(chan int)
-	data, err := ioutil.ReadFile("../config.conf")
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		logger.Fatal(err)
 	}
-	s := []Settings{}
-
-	if err := inif.Unmarshal(data, &s); err != nil {
+	sList := []*models.Settings{}
+	if err := inif.Unmarshal(data, &sList); err != nil {
 		logger.Fatal(err)
-	}
-
-	sList, err := config.ReadConfig(path)
-	if err != nil {
-		logger.Fatal("не удалось прочитать конфигурационный файл: ", err)
 	}
 
 	for _, s := range sList {
